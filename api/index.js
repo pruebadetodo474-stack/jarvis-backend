@@ -26,6 +26,15 @@ export default async function handler(req, res) {
     
   } catch (error) {
     console.error("Error en Jarvis Backend:", error);
-    return res.status(500).json({ error: 'Ocurrió un error al procesar la imagen en el servidor.' });
-  }
+    // Limpiar el formato Markdown antes de enviar a la App
+let textoLimpio = response.text;
+if (textoLimpio) {
+  textoLimpio = textoLimpio
+    .replace(/\*\*/g, '')  // Quita los asteriscos dobles
+    .replace(/\*/g, '')    // Quita los asteriscos simples
+    .replace(/#/g, '')     // Quita los numerales
+    .trim();               // Limpia espacios sobrantes al inicio y final
+}
+
+return res.status(200).json({ text: textoLimpio });
 }
