@@ -1,0 +1,10 @@
+{
+  "name": "jarvis-backend",
+  "version": "1.0.0",
+  "description": "Backend para Jarvis Vision",
+  "main": "api/index.js",
+  "type": "module",
+  "dependencies": {
+    "@google/genai": "^0.1.1"
+  }
+}
