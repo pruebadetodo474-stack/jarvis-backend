@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🛡️ LISTA DE 3 MODELOS DE RESPALDO EN ORDEN DE PRIORIDAD
+    // Modelos en fila
     const modelosIntentar = [
       'gemini-3.8-flash',
       'gemini-3.7-flash',
@@ -34,25 +34,22 @@ export default async function handler(req, res) {
     let response = null;
     let errorUltimo = null;
 
-    // Bucle inteligente que prueba cada modelo si el anterior falla
     for (const modeloActual of modelosIntentar) {
       try {
-        console.log(`Intentando conectar con el modelo: ${modeloActual}`);
+        console.log(`Intentando conectar con: ${modeloActual}`);
         response = await ai.models.generateContent({
           model: modeloActual,
           contents: contents,
         });
-        // Si la llamada es exitosa, salimos del ciclo de inmediato
-        break; 
+        break; // Éxito
       } catch (err) {
-        console.warn(`⚠️ Falló el modelo ${modeloActual}:`, err.message);
+        console.warn(`⚠️ Falló ${modeloActual}:`, err.message);
         errorUltimo = err;
-        // Espera corta de 800ms antes de intentar con el siguiente modelo de la lista
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Cambio ultrarrápido (solo 200ms de espera)
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
-    // Si los 3 modelos fallaron por completo
     if (!response) {
       throw errorUltimo || new Error("Todos los modelos de Gemini fallaron.");
     }
