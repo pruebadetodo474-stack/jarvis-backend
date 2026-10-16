@@ -24,11 +24,17 @@ export default async function handler(req, res) {
       });
     }
 
-    // Lista de modelos en orden de prioridad (Si el primero falla por alta demanda, usa el respaldo)
-    const modelosIntentar = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    // 🛡️ LISTA DE 3 MODELOS DE RESPALDO EN ORDEN DE PRIORIDAD
+    const modelosIntentar = [
+      'gemini-3.8-flash',
+      'gemini-3.7-flash',
+      'gemini-3.6-flash'
+    ];
+
     let response = null;
     let errorUltimo = null;
 
+    // Bucle inteligente que prueba cada modelo si el anterior falla
     for (const modeloActual of modelosIntentar) {
       try {
         console.log(`Intentando conectar con el modelo: ${modeloActual}`);
@@ -36,17 +42,17 @@ export default async function handler(req, res) {
           model: modeloActual,
           contents: contents,
         });
-        // Si tiene éxito, rompemos el ciclo y salimos
+        // Si la llamada es exitosa, salimos del ciclo de inmediato
         break; 
       } catch (err) {
-        console.warn(`Falló el modelo ${modeloActual}:`, err.message);
+        console.warn(`⚠️ Falló el modelo ${modeloActual}:`, err.message);
         errorUltimo = err;
-        // Espera 1 segundo antes de probar con el siguiente modelo de respaldo
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Espera corta de 800ms antes de intentar con el siguiente modelo de la lista
+        await new Promise(resolve => setTimeout(resolve, 800));
       }
     }
 
-    // Si todos los modelos fallaron
+    // Si los 3 modelos fallaron por completo
     if (!response) {
       throw errorUltimo || new Error("Todos los modelos de Gemini fallaron.");
     }
