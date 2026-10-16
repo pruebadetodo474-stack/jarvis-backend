@@ -1,7 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
 export default async function handler(req, res) {
-  // 1. Validar método HTTP
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método no permitido. Usa POST.' });
   }
@@ -9,18 +8,13 @@ export default async function handler(req, res) {
   try {
     const { prompt, imageBase64 } = req.body;
 
-    // Verificar que vengan los datos requeridos
     if (!prompt) {
       return res.status(400).json({ error: 'El campo prompt es obligatorio.' });
     }
 
-    // 2. Inicializar el SDK oficial con tu API Key
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    // Definir los contenidos a enviar al modelo
     const contents = [prompt];
-
-    // 3. Si mandas una imagen, estructurarla correctamente
     if (imageBase64) {
       contents.push({
         inlineData: {
@@ -30,27 +24,46 @@ export default async function handler(req, res) {
       });
     }
 
-    // 4. Llamar al modelo correcto actualizado
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: contents,
-    });
+    // Lista de modelos en orden de prioridad (Si el primero falla por alta demanda, usa el respaldo)
+    const modelosIntentar = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    let response = null;
+    let errorUltimo = null;
 
-    // 5. Limpiar el formato Markdown (asteriscos y numerales) antes de enviar a la App
+    for (const modeloActual of modelosIntentar) {
+      try {
+        console.log(`Intentando conectar con el modelo: ${modeloActual}`);
+        response = await ai.models.generateContent({
+          model: modeloActual,
+          contents: contents,
+        });
+        // Si tiene éxito, rompemos el ciclo y salimos
+        break; 
+      } catch (err) {
+        console.warn(`Falló el modelo ${modeloActual}:`, err.message);
+        errorUltimo = err;
+        // Espera 1 segundo antes de probar con el siguiente modelo de respaldo
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    // Si todos los modelos fallaron
+    if (!response) {
+      throw errorUltimo || new Error("Todos los modelos de Gemini fallaron.");
+    }
+
     let textoLimpio = response.text;
     if (textoLimpio) {
       textoLimpio = textoLimpio
-        .replace(/\*\*/g, '')  // Quita los asteriscos dobles
-        .replace(/\*/g, '')    // Quita los asteriscos simples
-        .replace(/#/g, '')     // Quita los numerales
-        .trim();               // Limpia espacios sobrantes
+        .replace(/\*\*/g, '')  
+        .replace(/\*/g, '')    
+        .replace(/#/g, '')     
+        .trim();               
     }
 
-    // 6. Retornar el texto limpio generado por la IA
     return res.status(200).json({ text: textoLimpio });
     
   } catch (error) {
-    console.error("Error en Jarvis Backend:", error);
+    console.error("Error crítico en Jarvis Backend:", error);
     return res.status(500).json({ error: 'Ocurrió un error al procesar la solicitud en el servidor.' });
   }
 }
